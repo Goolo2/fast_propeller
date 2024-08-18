@@ -192,57 +192,6 @@ def optimize(xs, ys, ts, warp_function, objective, optimizer=opt.fmin_bfgs, x0=N
     print(argmax.x)
     return argmax.x
 
-# def optimize(xs, ys, ts, warp_function, objective, x0=None, blur_sigma=None, img_size=(180, 240)):
-#     args = (xs, ys, ts, warp_function, img_size, blur_sigma)
-#     x0 = np.array([-np.deg2rad(-18000)])
-    
-#     # 设置优化的参数和边界
-#     lower_bound = -np.deg2rad(20000)
-#     # upper_bound = -np.deg2rad(7000)
-#     upper_bound = np.deg2rad(20000)
-    
-#     # 定义nlopt的优化器
-#     opt = nlopt.opt(nlopt.GN_DIRECT, 1)  # 使用DIRECT全局优化算法
-#     opt.set_lower_bounds([lower_bound])
-#     opt.set_upper_bounds([upper_bound])
-    
-#     # 定义优化的目标函数（nlopt要求返回函数值而不是目标值）
-#     def nlopt_func(params, grad):
-#         return objective.evaluate_function(params, *args)
-    
-#     opt.set_min_objective(nlopt_func)
-
-#     # 开始优化
-#     result = opt.optimize(x0.tolist())
-    
-#     print(result)
-#     return result
-
-# def optimize(xs, ys, ts, warp_function, objective, optimizer=opt.minimize, x0=None, blur_sigma=None, img_size=(180, 240)):
-#     args = (xs, ys, ts, warp_function, img_size, blur_sigma)
-
-#     # Initial guess for x0 if not provided
-#     # if x0 is None:
-#     #     x0 = np.zeros(warp_function.dims)  # Assumes warp_function has a 'dims' attribute defining the dimensionality
-
-#     x0 = np.array([-np.deg2rad(-12000)])
-#     # Define bounds for the optimizer (L-BFGS-B requires bounds for each dimension)
-#     # bounds = [(-np.deg2rad(20000), -np.deg2rad(7000))] * warp_function.dims
-#     bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(7000)]))
-
-
-#     # Using opt.minimize with L-BFGS-B method
-#     # result = optimizer(objective.evaluate_function, x0, args=args, method='L-BFGS-B', bounds=bounds)
-#     # # result = optimizer(objective.evaluate_function, x0, args=args, method='SLSQP')
-#     # result = opt.brent(objective.evaluate_function, args=args, brack=bounds)
-#     # result = opt.newton(objective.evaluate_function, x0=x0, args=args)
-#     # result = opt.fmin_bfgs(objective.evaluate_function, x0, args=args, epsilon=1, disp=False)
-#     result = opt.bisect(objective.evaluate_function, bounds[0], bounds[1], args=args)
-    
-#     print(result)
-#     return result
-#     print(result.x)
-#     return result.x
 
 
 def get_data(data):
@@ -270,6 +219,18 @@ def calculate_rpm(data, img_size, obj, blur, centers):
     return rpm.tolist()[0], argmax
 
 
+def read_txt_xypt(file_path, max_rows=None):
+    data = np.loadtxt(file_path, max_rows=max_rows)
+    print(data.shape)
+    x_raw = data[:, 0]
+    y_raw = data[:, 1]
+    p_raw = data[:, 2]
+    time_raw = data[:, 3]
+    
+    new_data = np.column_stack((x_raw, y_raw, time_raw))
+    print(new_data.shape)
+    return new_data
+
 if __name__ == "__main__":
     """
     Quick demo of various objectives.
@@ -278,14 +239,7 @@ if __name__ == "__main__":
         gt Ground truth optic flow for event slice
         img_size The size of the event camera sensor
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--gt", nargs='+', type=float, default=(0, 0))
-    parser.add_argument("--img_size", nargs='+',
-                        type=float, default=(720, 1280))  # x,y
-    # parser.add_argument("--img_size", nargs='+', type=float, default=(-100,100))
-    args = parser.parse_args()
-
-    img_size = tuple(args.img_size)
+    img_size = (720, 1280)
 
     obj = sos_objective()
 
@@ -299,30 +253,29 @@ if __name__ == "__main__":
         
         print(f'Processing {keyname}...')
 
-        
         # blur = 2.0 
         blur = 0.0 
         centers = [600,411]
         
         rpms_res = []
-        filepath = os.path.join(basedir, f'cluster_1.npy')
-        alldata = np.load(filepath, allow_pickle=True)
-        for idx, data in enumerate(alldata):
-            # data = data[:1000]
-            begin = time.time()
-            rpm, rad_s = calculate_rpm(data, img_size, obj, blur, centers)
-            end = time.time()
-            
-            # print(idx/len(alldata)*100.0, rad_s)
-            print(f' {idx}/{len(alldata)}:  rpm = {abs(rpm)}')
+        filepath = os.path.join(basedir, '1_sub.txt')
+        alldata = read_txt_xypt(filepath)
+        idx = 1
+        data = alldata[:10000]
+        begin = time.time()
+        rpm, rad_s = calculate_rpm(data, img_size, obj, blur, centers)
+        end = time.time()
+        
+        # print(idx/len(alldata)*100.0, rad_s)
+        print(f' {idx}/{len(alldata)}:  rpm = {abs(rpm)}')
 
-            timestamp = idx * 50e3
-            delta_t = end - begin
-            print(f'Latency: {delta_t:.6f}s')
-            rpms_res.append([timestamp, abs(rpm), delta_t])
+        timestamp = idx * 50e3
+        delta_t = end - begin
+        print(f'Latency: {delta_t:.6f}s')
+        rpms_res.append([timestamp, abs(rpm), delta_t])
 
         
-        df_rpms = pd.DataFrame(rpms_res, columns=['Time', 'RPM', 'DeltaT'])
-        df_rpms.to_csv(savedir, index=False)
+        # df_rpms = pd.DataFrame(rpms_res, columns=['Time', 'RPM', 'DeltaT'])
+        # df_rpms.to_csv(savedir, index=False)
         
 

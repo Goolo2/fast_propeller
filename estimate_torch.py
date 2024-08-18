@@ -212,15 +212,14 @@ def optimize(xs, ys, ts, warp_function, objective, x0=None, blur_sigma=None, img
     # x0 = torch.tensor(x0, requires_grad=True)
     x0 = torch.tensor([-np.deg2rad(12000)], requires_grad=True)
     # 选择优化器
-    optimizer = torch.optim.SGD([x0], lr=1000)
+    optimizer = torch.optim.SGD([x0], lr=1)
     
     for epoch in range(num_epochs):
         optimizer.zero_grad()
         
         # 计算目标函数值
-        # loss_value = objective.evaluate_function(params=x0.detach().numpy(), xs=xs, ys=ys, ts=ts, warpfunc=warp_function, img_size=img_size, blur_sigma=blur_sigma)
         loss_value = objective.evaluate_function(params=x0, xs=xs, ys=ys, ts=ts, warpfunc=warp_function, img_size=img_size, blur_sigma=blur_sigma)
-        loss = torch.tensor(loss_value, requires_grad=True)
+        loss = loss_value
         
         # 计算梯度
         loss.backward()
@@ -228,11 +227,11 @@ def optimize(xs, ys, ts, warp_function, objective, x0=None, blur_sigma=None, img
         # 执行优化步骤
         optimizer.step()
         
-        grads = x0.grad
-        print(f'Gradient: {grads}')
+        # grads = x0.grad
+        # print(f'Gradient: {grads}')
         
         if (epoch + 1) % 10 == 0:
-            print(f'Epoch {epoch + 1}/{num_epochs}, Loss: {loss_value}')
+            print(f'Epoch {epoch + 1}/{num_epochs}, Loss: {loss_value.item()}')
     
     return x0.detach().numpy()
 

@@ -45,7 +45,8 @@ class sos_objective(objective_function):
         blur_sigma=self.default_blur if blur_sigma is None else blur_sigma
         # return np.random.rand()
 
-        sos = np.mean(iwe*iwe)#/num_pix
+        # sos = np.mean(iwe*iwe)#/num_pix
+        sos = torch.mean(iwe*iwe)#/num_pix
         return -sos
         
         # loss = np.var(iwe-np.mean(iwe))
@@ -59,8 +60,10 @@ def events_bounds_mask(xs, ys, x_min, x_max, y_min, y_max):
     """
     Get a mask of the events that are within the given bounds
     """
-    mask = np.where(np.logical_or(xs<=x_min, xs>x_max), 0.0, 1.0)
-    mask *= np.where(np.logical_or(ys<=y_min, ys>y_max), 0.0, 1.0)
+    # mask = np.where(np.logical_or(xs<=x_min, xs>x_max), 0.0, 1.0)
+    # mask *= np.where(np.logical_or(ys<=y_min, ys>y_max), 0.0, 1.0)
+    mask = torch.where(torch.logical_or(xs<=x_min, xs>x_max), 0.0, 1.0)
+    mask *= torch.where(torch.logical_or(ys<=y_min, ys>y_max), 0.0, 1.0)
     return mask
 
 
@@ -89,7 +92,8 @@ def interpolate_to_derivative_img(pxs, pys, dxs, dys, d_img, w1, w2):
 def events_to_image_drv(xn, yn, pn, jacobian_xn, jacobian_yn,
         device=None, sensor_size=(180, 240), clip_out_of_range=True,
         interpolation=None, padding=True, compute_gradient=False):
-    xt, yt, pt = torch.from_numpy(xn), torch.from_numpy(yn), torch.from_numpy(pn)
+    # xt, yt, pt = torch.from_numpy(xn), torch.from_numpy(yn), torch.from_numpy(pn)
+    xt, yt, pt = xn, yn, pn
     xs, ys, ps, = xt.float(), yt.float(), pt.float()
     if device is None:
         device = xs.device
@@ -117,7 +121,8 @@ def events_to_image_drv(xn, yn, pn, jacobian_xn, jacobian_yn,
     interpolate_to_image(pxs, pys, dxs, dys, masked_ps, img)
 
 
-    return img.numpy()
+    # return img.numpy()
+    return img
 
 
 def get_iwe(params, xs, ys, ts, warpfunc, img_size, compute_gradient=False, use_polarity=True):
@@ -129,7 +134,8 @@ def get_iwe(params, xs, ys, ts, warpfunc, img_size, compute_gradient=False, use_
     mask = events_bounds_mask(xs, ys, 0, img_size[1], 0, img_size[0])
     xs, ys = xs*mask, ys*mask
     
-    ps = np.ones_like(xs)
+    # ps = np.ones_like(xs)
+    ps = torch.ones_like(xs)
 
     iwe = events_to_image_drv(xs, ys, ps, jx, jy, sensor_size=img_size,
             interpolation='bilinear', compute_gradient=compute_gradient)
@@ -153,26 +159,30 @@ class rotvel_warp(warp_function):
         self.centers = centers
 
     def warp(self, xs, ys, ts, t0, params):
-        dt = ts-t0
+        xs_copy = torch.from_numpy(xs)
+        ys_copy = torch.from_numpy(ys)
+        ts_copy = torch.from_numpy(ts)
+        t0 = torch.tensor(t0)
+        dt = ts_copy-t0
         theta = dt*params[0]
 
-        xs_copy = xs.copy()
-        ys_copy = ys.copy()
+        # xs_copy = xs.copy()
+        # ys_copy = ys.copy()
         # ts_copy = ts.copy()
         
         if self.centers:
             xs_mean = self.centers[0]
             ys_mean = self.centers[1]
         else:
-            xs_mean = np.mean(xs_copy)
-            ys_mean = np.mean(ys_copy)
+            xs_mean = torch.mean(xs_copy)
+            ys_mean = torch.mean(ys_copy)
         
         xs_copy = xs_copy - xs_mean
         ys_copy = ys_copy - ys_mean
         
         # rotation matrix
-        cos_theta = np.cos(theta)
-        sin_theta = np.sin(theta)
+        cos_theta = torch.cos(theta)
+        sin_theta = torch.sin(theta)
 
         xs_tmp = xs_copy*cos_theta - ys_copy*sin_theta
         ys_tmp = xs_copy*sin_theta + ys_copy*cos_theta
@@ -182,24 +192,49 @@ class rotvel_warp(warp_function):
 
         jacobian_x, jacobian_y = None, None
 
-        return x_prime.copy(), y_prime.copy(), jacobian_x, jacobian_y
+        return x_prime, y_prime, jacobian_x, jacobian_y
     
     
     
-def optimize(xs, ys, ts, warp_function, objective, optimizer=opt.fmin_bfgs, x0=None, blur_sigma=None, img_size=(180, 240)):
-    args = (xs, ys, ts, warp_function, img_size, blur_sigma)
-    x0 = np.array([-np.deg2rad(12000)])
-    # bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(-20000)]))
-    bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(7000)]))
-    print(bounds, x0)
-    if x0 is None:
-        x0 = np.zeros(warp_function.dims)
-    argmax = opt.minimize_scalar(objective.evaluate_function, args=args, bounds=bounds, method='bounded')
-    print(argmax.x)
-    return argmax.x
+# def optimize(xs, ys, ts, warp_function, objective, optimizer=opt.fmin_bfgs, x0=None, blur_sigma=None, img_size=(180, 240)):
+#     args = (xs, ys, ts, warp_function, img_size, blur_sigma)
+#     x0 = np.array([-np.deg2rad(12000)])
+#     # bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(-20000)]))
+#     bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(7000)]))
+#     print(bounds, x0)
+#     if x0 is None:
+#         x0 = np.zeros(warp_function.dims)
+#     argmax = opt.minimize_scalar(objective.evaluate_function, args=args, bounds=bounds, method='bounded')
+#     print(argmax.x)
+#     return argmax.x
     
+def optimize(xs, ys, ts, warp_function, objective, x0=None, blur_sigma=None, img_size=(180, 240), lr=0.01, num_epochs=100):
+    # x0 = torch.tensor(x0, requires_grad=True)
+    x0 = torch.tensor([-np.deg2rad(12000)], requires_grad=True)
+    # 选择优化器
+    optimizer = torch.optim.SGD([x0], lr=1000)
     
-
+    for epoch in range(num_epochs):
+        optimizer.zero_grad()
+        
+        # 计算目标函数值
+        # loss_value = objective.evaluate_function(params=x0.detach().numpy(), xs=xs, ys=ys, ts=ts, warpfunc=warp_function, img_size=img_size, blur_sigma=blur_sigma)
+        loss_value = objective.evaluate_function(params=x0, xs=xs, ys=ys, ts=ts, warpfunc=warp_function, img_size=img_size, blur_sigma=blur_sigma)
+        loss = torch.tensor(loss_value, requires_grad=True)
+        
+        # 计算梯度
+        loss.backward()
+        
+        # 执行优化步骤
+        optimizer.step()
+        
+        grads = x0.grad
+        print(f'Gradient: {grads}')
+        
+        if (epoch + 1) % 10 == 0:
+            print(f'Epoch {epoch + 1}/{num_epochs}, Loss: {loss_value}')
+    
+    return x0.detach().numpy()
 
 
 def get_data(data):
@@ -305,7 +340,7 @@ if __name__ == "__main__":
         for idx, data in enumerate(alldata):
             # data = data[:1000]
             begin = time.time()
-            custom_optimize(data)
+            # custom_optimize(data)
             rpm, rad_s = calculate_rpm(data, img_size, obj, blur, centers)
             end = time.time()
             

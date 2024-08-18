@@ -186,15 +186,28 @@ class rotvel_warp(warp_function):
     
     
     
+# def optimize(xs, ys, ts, warp_function, objective, optimizer=opt.fmin_bfgs, x0=None, blur_sigma=None, img_size=(180, 240)):
+#     args = (xs, ys, ts, warp_function, img_size, blur_sigma)
+#     x0 = np.array([-np.deg2rad(12000)])
+#     # bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(-20000)]))
+#     bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(7000)]))
+#     print(bounds, x0)
+#     if x0 is None:
+#         x0 = np.zeros(warp_function.dims)
+#     argmax = opt.minimize_scalar(objective.evaluate_function, args=args, bounds=bounds, method='bounded')
+#     print(argmax.x)
+#     return argmax.x
+
 def optimize(xs, ys, ts, warp_function, objective, optimizer=opt.fmin_bfgs, x0=None, blur_sigma=None, img_size=(180, 240)):
     args = (xs, ys, ts, warp_function, img_size, blur_sigma)
     x0 = np.array([-np.deg2rad(12000)])
     # bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(-20000)]))
-    bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(7000)]))
+    # bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(7000)]))
+    bounds = [(np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(7000)]))]
     print(bounds, x0)
     if x0 is None:
         x0 = np.zeros(warp_function.dims)
-    argmax = opt.minimize_scalar(objective.evaluate_function, args=args, bounds=bounds, method='bounded')
+    argmax = opt.minimize(objective.evaluate_function, args=args, x0=x0, bounds=bounds, method='L-BFGS-B')
     print(argmax.x)
     return argmax.x
     
@@ -303,9 +316,9 @@ if __name__ == "__main__":
         filepath = os.path.join(basedir, f'cluster_1.npy')
         alldata = np.load(filepath, allow_pickle=True)
         for idx, data in enumerate(alldata):
-            # data = data[:1000]
+            data = data[:1000]
             begin = time.time()
-            custom_optimize(data)
+            # custom_optimize(data)
             rpm, rad_s = calculate_rpm(data, img_size, obj, blur, centers)
             end = time.time()
             

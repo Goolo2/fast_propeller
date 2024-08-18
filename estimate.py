@@ -300,11 +300,21 @@ if __name__ == "__main__":
 
     '''calculate rpm for multiple blades'''
 
-    for keyname in range(1,2,1):        
+    # for keyname in range(1,6,1):
+    #     # basedir = f'H:\propeller_det_data\\testbed_exp\data\event\\processed\diff_illumination/{keyname}'
+    #     basedir = f'F:\propeller_det_data\\testbed_exp\data\event\\processed\diff_illumination/{keyname}'
+    #     # basedir = f'./'
+    #     # savedir = f'./results/ours/diff_illumination/{keyname}_filterd_{obj.name}_latency.csv'
+    #     savedir = f'./latency/{keyname}_filterd_{obj.name}_latency.csv'
+
+    for keyname in range(1000, 8001, 1000):
         # basedir = f'H:\propeller_det_data\\testbed_exp\data\event\\processed\diff_illumination/{keyname}'
-        basedir = f'./'
+        basedir = f'F:\propeller_det_data\\testbed_exp\data\event\\processed\\diff_rpm/{keyname}'
+        # basedir = f'./'
         # savedir = f'./results/ours/diff_illumination/{keyname}_filterd_{obj.name}_latency.csv'
-        savedir = f'test.csv'
+        savedir = f'./latency/diff_rpm/{keyname}_filterd_{obj.name}_latency.csv'
+
+        # savedir = f'test.csv'
         
         print(f'Processing {keyname}...')
 
@@ -317,7 +327,7 @@ if __name__ == "__main__":
         filepath = os.path.join(basedir, f'cluster_1.npy')
         alldata = np.load(filepath, allow_pickle=True)
         for idx, data in enumerate(alldata):
-            data = data[:10000]
+            data = data[:1000]
             begin = time.perf_counter()
             # custom_optimize(data)
             rpm, rad_s = calculate_rpm(data, img_size, obj, blur, centers)

@@ -10,7 +10,7 @@ import time
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
 import torch
-import nlopt
+# import nlopt
 
 
 class objective_function(ABC):
@@ -238,6 +238,7 @@ def calculate_rpm(data, img_size, obj, blur, centers):
     rpm = np.rad2deg(argmax)/360*60
 
     return rpm.tolist()[0], argmax
+    # return rpm, argmax
 
 
 
@@ -316,11 +317,11 @@ if __name__ == "__main__":
         filepath = os.path.join(basedir, f'cluster_1.npy')
         alldata = np.load(filepath, allow_pickle=True)
         for idx, data in enumerate(alldata):
-            data = data[:1000]
-            begin = time.time()
+            data = data[:10000]
+            begin = time.perf_counter()
             # custom_optimize(data)
             rpm, rad_s = calculate_rpm(data, img_size, obj, blur, centers)
-            end = time.time()
+            end = time.perf_counter()
             
             # print(idx/len(alldata)*100.0, rad_s)
             print(f' {idx}/{len(alldata)}:  rpm = {abs(rpm)}')

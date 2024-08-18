@@ -232,13 +232,6 @@ def read_txt_xypt(file_path, max_rows=None):
     return new_data
 
 if __name__ == "__main__":
-    """
-    Quick demo of various objectives.
-    Args:
-        path Path to h5 file with event data
-        gt Ground truth optic flow for event slice
-        img_size The size of the event camera sensor
-    """
     img_size = (720, 1280)
 
     obj = sos_objective()

@@ -254,7 +254,7 @@ if __name__ == "__main__":
         filepath = os.path.join(basedir, '1_sub.txt')
         alldata = read_txt_xypt(filepath)
         idx = 1
-        data = alldata[:10000]
+        data = alldata[:1000]
         begin = time.time()
         rpm, rad_s = calculate_rpm(data, img_size, obj, blur, centers)
         end = time.time()

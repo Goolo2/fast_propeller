@@ -47,6 +47,13 @@ class sos_objective(objective_function):
 
         sos = np.mean(iwe*iwe)#/num_pix
         return -sos
+        
+        # loss = np.var(iwe-np.mean(iwe))
+        # return -loss
+        
+        # exp = np.exp(iwe.astype(np.double))
+        # soe = np.mean(exp)
+        # return -soe
 
 def events_bounds_mask(xs, ys, x_min, x_max, y_min, y_max):
     """
@@ -179,70 +186,50 @@ class rotvel_warp(warp_function):
     
     
     
-def optimize(xs, ys, ts, warp_function, objective, optimizer=opt.fmin_bfgs, x0=None, blur_sigma=None, img_size=(180, 240)):
-    args = (xs, ys, ts, warp_function, img_size, blur_sigma)
-    x0 = np.array([-np.deg2rad(-18000)])
-    # bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(-20000)]))
-    bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(7000)]))
-    print(bounds, x0)
-    if x0 is None:
-        x0 = np.zeros(warp_function.dims)
-    argmax = opt.minimize_scalar(objective.evaluate_function, args=args, bounds=bounds, method='bounded')
-
-    print(argmax.x)
-    return argmax.x
-
-# def optimize(xs, ys, ts, warp_function, objective, x0=None, blur_sigma=None, img_size=(180, 240)):
+# def optimize(xs, ys, ts, warp_function, objective, optimizer=opt.fmin_bfgs, x0=None, blur_sigma=None, img_size=(180, 240)):
 #     args = (xs, ys, ts, warp_function, img_size, blur_sigma)
-#     x0 = np.array([-np.deg2rad(-18000)])
-    
-#     # 设置优化的参数和边界
-#     lower_bound = -np.deg2rad(20000)
-#     # upper_bound = -np.deg2rad(7000)
-#     upper_bound = np.deg2rad(20000)
-    
-#     # 定义nlopt的优化器
-#     opt = nlopt.opt(nlopt.GN_DIRECT, 1)  # 使用DIRECT全局优化算法
-#     opt.set_lower_bounds([lower_bound])
-#     opt.set_upper_bounds([upper_bound])
-    
-#     # 定义优化的目标函数（nlopt要求返回函数值而不是目标值）
-#     def nlopt_func(params, grad):
-#         return objective.evaluate_function(params, *args)
-    
-#     opt.set_min_objective(nlopt_func)
-
-#     # 开始优化
-#     result = opt.optimize(x0.tolist())
-    
-#     print(result)
-#     return result
-
-# def optimize(xs, ys, ts, warp_function, objective, optimizer=opt.minimize, x0=None, blur_sigma=None, img_size=(180, 240)):
-#     args = (xs, ys, ts, warp_function, img_size, blur_sigma)
-
-#     # Initial guess for x0 if not provided
-#     # if x0 is None:
-#     #     x0 = np.zeros(warp_function.dims)  # Assumes warp_function has a 'dims' attribute defining the dimensionality
-
-#     x0 = np.array([-np.deg2rad(-12000)])
-#     # Define bounds for the optimizer (L-BFGS-B requires bounds for each dimension)
-#     # bounds = [(-np.deg2rad(20000), -np.deg2rad(7000))] * warp_function.dims
+#     x0 = np.array([-np.deg2rad(12000)])
+#     # bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(-20000)]))
 #     bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(7000)]))
-
-
-#     # Using opt.minimize with L-BFGS-B method
-#     # result = optimizer(objective.evaluate_function, x0, args=args, method='L-BFGS-B', bounds=bounds)
-#     # # result = optimizer(objective.evaluate_function, x0, args=args, method='SLSQP')
-#     # result = opt.brent(objective.evaluate_function, args=args, brack=bounds)
-#     # result = opt.newton(objective.evaluate_function, x0=x0, args=args)
-#     # result = opt.fmin_bfgs(objective.evaluate_function, x0, args=args, epsilon=1, disp=False)
-#     result = opt.bisect(objective.evaluate_function, bounds[0], bounds[1], args=args)
+#     print(bounds, x0)
+#     if x0 is None:
+#         x0 = np.zeros(warp_function.dims)
+#     argmax = opt.minimize_scalar(objective.evaluate_function, args=args, bounds=bounds, method='bounded')
+#     print(argmax.x)
+#     return argmax.x
     
-#     print(result)
-#     return result
-#     print(result.x)
-#     return result.x
+#     # argmax = opt.fmin_bfgs(objective.evaluate_function, x0, args=args, epsilon=1, maxiter=1e8, disp=False)
+#     # print(argmax[0])
+
+#     # return argmax
+    
+    
+def optimize(xs, ys, ts, warp_function, objective, optimizer=opt.minimize, x0=None, blur_sigma=None, img_size=(180, 240)):
+    args = (xs, ys, ts, warp_function, img_size, blur_sigma)
+    
+    # 单值初始化，如果未提供x0
+    if x0 is None:
+        x0 = np.array([-np.deg2rad(12000)])
+    
+    # 定义边界
+    bounds = [(np.deg2rad(-20000), np.deg2rad(7000))]
+    
+    # 定义目标函数包装器（如果需要）
+    def objective_wrapper(params, *args):
+        return objective.evaluate_function(params, *args)
+
+    # 使用L-BFGS-B方法作为优化器
+    result = opt.minimize(
+        objective_wrapper,
+        x0,
+        args=args,
+        method='L-BFGS-B',
+        bounds=bounds,
+        options={'disp': True}
+    )
+    
+    print("Optimization result:", result)
+    return result.x, result
 
 
 def get_data(data):
@@ -270,6 +257,44 @@ def calculate_rpm(data, img_size, obj, blur, centers):
     return rpm.tolist()[0], argmax
 
 
+
+
+def custom_optimize(data):
+    xs, ys, ts = get_data(data)
+    # ?choose objective function#########################################
+    # obj = variance_objective()
+    # obj = rms_objective()
+    obj = sos_objective()
+    # obj = soe_objective()
+    # obj = moa_objective()
+    # obj = isoa_objective()
+    # obj = sosa_objective()
+    # obj = tsmap_objective()
+    # obj = timestamp_objective()
+    # obj = biobj_objective()
+
+    warp = rotvel_warp([600,411])
+    losses= []
+    for i in range(-50,50):
+        params = np.array([-np.deg2rad(i*1000)])
+        objval = obj.evaluate_function(params, xs, ys, ts, warp, img_size)
+        # iwe, d_iwe = get_iwe(params, xs, ys, ts, warp, img_size, use_polarity=False, compute_gradient=False)
+        # print(iwe.shape)
+        # objval = -np.var(iwe-np.mean(iwe))
+        
+        losses.append((i, params[0], objval))
+        print(i, params[0], objval)
+    
+    min_loss_i, rad, min_loss_value = min(losses, key=lambda x: x[2])
+    rpm = min_loss_i*1000/360*60
+    print('------------best------------')
+    print(min_loss_i, rad, min_loss_value, rpm)
+    
+    losses = np.array(losses)
+    plt.scatter(losses[:,0], losses[:,2], color='g', s=5)
+    plt.show()
+    
+    
 if __name__ == "__main__":
     """
     Quick demo of various objectives.
@@ -308,8 +333,9 @@ if __name__ == "__main__":
         filepath = os.path.join(basedir, f'cluster_1.npy')
         alldata = np.load(filepath, allow_pickle=True)
         for idx, data in enumerate(alldata):
-            # data = data[:1000]
+            data = data[:1000]
             begin = time.time()
+            # custom_optimize(data)
             rpm, rad_s = calculate_rpm(data, img_size, obj, blur, centers)
             end = time.time()
             

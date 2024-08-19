@@ -45,15 +45,15 @@ class sos_objective(objective_function):
         blur_sigma=self.default_blur if blur_sigma is None else blur_sigma
         # return np.random.rand()
 
-        sos = np.mean(iwe*iwe)#/num_pix
-        return -sos
+        # sos = np.mean(iwe*iwe)#/num_pix
+        # return -sos
         
         # loss = np.var(iwe-np.mean(iwe))
         # return -loss
         
-        # exp = np.exp(iwe.astype(np.double))
-        # soe = np.mean(exp)
-        # return -soe
+        exp = np.exp(iwe.astype(np.double))
+        soe = np.mean(exp)
+        return -soe
 
 def events_bounds_mask(xs, ys, x_min, x_max, y_min, y_max):
     """
@@ -300,19 +300,19 @@ if __name__ == "__main__":
 
     '''calculate rpm for multiple blades'''
 
-    # for keyname in range(1,6,1):
+    for keyname in range(1,6,1):
+        # basedir = f'H:\propeller_det_data\\testbed_exp\data\event\\processed\diff_illumination/{keyname}'
+        # basedir = f'F:\propeller_det_data\\testbed_exp\data\event\\processed\diff_illumination/{keyname}'
+        basedir = f'./'
+        # savedir = f'./results/ours/diff_illumination/{keyname}_filterd_{obj.name}_latency.csv'
+        savedir = f'./latency/{keyname}_filterd_{obj.name}_latency.csv'
+
+    # for keyname in range(1000, 8001, 1000):
     #     # basedir = f'H:\propeller_det_data\\testbed_exp\data\event\\processed\diff_illumination/{keyname}'
-    #     basedir = f'F:\propeller_det_data\\testbed_exp\data\event\\processed\diff_illumination/{keyname}'
+    #     basedir = f'F:\propeller_det_data\\testbed_exp\data\event\\processed\\diff_rpm/{keyname}'
     #     # basedir = f'./'
     #     # savedir = f'./results/ours/diff_illumination/{keyname}_filterd_{obj.name}_latency.csv'
-    #     savedir = f'./latency/{keyname}_filterd_{obj.name}_latency.csv'
-
-    for keyname in range(1000, 8001, 1000):
-        # basedir = f'H:\propeller_det_data\\testbed_exp\data\event\\processed\diff_illumination/{keyname}'
-        basedir = f'F:\propeller_det_data\\testbed_exp\data\event\\processed\\diff_rpm/{keyname}'
-        # basedir = f'./'
-        # savedir = f'./results/ours/diff_illumination/{keyname}_filterd_{obj.name}_latency.csv'
-        savedir = f'./latency/diff_rpm/{keyname}_filterd_{obj.name}_latency.csv'
+    #     savedir = f'./latency/diff_rpm/{keyname}_filterd_{obj.name}_latency.csv'
 
         # savedir = f'test.csv'
         
@@ -327,22 +327,22 @@ if __name__ == "__main__":
         filepath = os.path.join(basedir, f'cluster_1.npy')
         alldata = np.load(filepath, allow_pickle=True)
         for idx, data in enumerate(alldata):
-            data = data[:1000]
+            data = data[:10000]
             begin = time.perf_counter()
-            # custom_optimize(data)
-            rpm, rad_s = calculate_rpm(data, img_size, obj, blur, centers)
-            end = time.perf_counter()
+            custom_optimize(data)
+        #     rpm, rad_s = calculate_rpm(data, img_size, obj, blur, centers)
+        #     end = time.perf_counter()
             
-            # print(idx/len(alldata)*100.0, rad_s)
-            print(f' {idx}/{len(alldata)}:  rpm = {abs(rpm)}')
+        #     # print(idx/len(alldata)*100.0, rad_s)
+        #     print(f' {idx}/{len(alldata)}:  rpm = {abs(rpm)}')
 
-            timestamp = idx * 50e3
-            delta_t = end - begin
-            print(f'Latency: {delta_t:.6f}s')
-            rpms_res.append([timestamp, abs(rpm), delta_t])
+        #     timestamp = idx * 50e3
+        #     delta_t = end - begin
+        #     print(f'Latency: {delta_t:.6f}s')
+        #     rpms_res.append([timestamp, abs(rpm), delta_t])
 
         
-        df_rpms = pd.DataFrame(rpms_res, columns=['Time', 'RPM', 'DeltaT'])
-        df_rpms.to_csv(savedir, index=False)
+        # df_rpms = pd.DataFrame(rpms_res, columns=['Time', 'RPM', 'DeltaT'])
+        # df_rpms.to_csv(savedir, index=False)
         
 

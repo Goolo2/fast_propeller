@@ -47,6 +47,13 @@ class sos_objective(objective_function):
 
         sos = np.mean(iwe*iwe)#/num_pix
         return -sos
+        
+        # loss = np.var(iwe-np.mean(iwe))
+        # return -loss
+        
+        # exp = np.exp(iwe.astype(np.double))
+        # soe = np.mean(exp)
+        # return -soe
 
 def events_bounds_mask(xs, ys, x_min, x_max, y_min, y_max):
     """
@@ -179,18 +186,32 @@ class rotvel_warp(warp_function):
     
     
     
+# def optimize(xs, ys, ts, warp_function, objective, optimizer=opt.fmin_bfgs, x0=None, blur_sigma=None, img_size=(180, 240)):
+#     args = (xs, ys, ts, warp_function, img_size, blur_sigma)
+#     x0 = np.array([-np.deg2rad(12000)])
+#     # bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(-20000)]))
+#     bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(7000)]))
+#     print(bounds, x0)
+#     if x0 is None:
+#         x0 = np.zeros(warp_function.dims)
+#     argmax = opt.minimize_scalar(objective.evaluate_function, args=args, bounds=bounds, method='bounded')
+#     print(argmax.x)
+#     return argmax.x
+
 def optimize(xs, ys, ts, warp_function, objective, optimizer=opt.fmin_bfgs, x0=None, blur_sigma=None, img_size=(180, 240)):
     args = (xs, ys, ts, warp_function, img_size, blur_sigma)
-    x0 = np.array([-np.deg2rad(-18000)])
+    x0 = np.array([-np.deg2rad(12000)])
     # bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(-20000)]))
-    bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(7000)]))
+    # bounds = (np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(7000)]))
+    bounds = [(np.array([-np.deg2rad(20000)]), np.array([-np.deg2rad(7000)]))]
     print(bounds, x0)
     if x0 is None:
         x0 = np.zeros(warp_function.dims)
-    argmax = opt.minimize_scalar(objective.evaluate_function, args=args, bounds=bounds, method='bounded')
-
+    argmax = opt.minimize(objective.evaluate_function, args=args, x0=x0, bounds=bounds, method='L-BFGS-B')
     print(argmax.x)
     return argmax.x
+    
+    
 
 
 
@@ -217,58 +238,111 @@ def calculate_rpm(data, img_size, obj, blur, centers):
     rpm = np.rad2deg(argmax)/360*60
 
     return rpm.tolist()[0], argmax
+    # return rpm, argmax
 
 
-def read_txt_xypt(file_path, max_rows=None):
-    data = np.loadtxt(file_path, max_rows=max_rows)
-    print(data.shape)
-    x_raw = data[:, 0]
-    y_raw = data[:, 1]
-    p_raw = data[:, 2]
-    time_raw = data[:, 3]
+
+
+def custom_optimize(data):
+    xs, ys, ts = get_data(data)
+    # ?choose objective function#########################################
+    # obj = variance_objective()
+    # obj = rms_objective()
+    obj = sos_objective()
+    # obj = soe_objective()
+    # obj = moa_objective()
+    # obj = isoa_objective()
+    # obj = sosa_objective()
+    # obj = tsmap_objective()
+    # obj = timestamp_objective()
+    # obj = biobj_objective()
+
+    warp = rotvel_warp([600,411])
+    losses= []
+    for i in range(-50,50):
+        params = np.array([-np.deg2rad(i*1000)])
+        objval = obj.evaluate_function(params, xs, ys, ts, warp, img_size)
+        # iwe, d_iwe = get_iwe(params, xs, ys, ts, warp, img_size, use_polarity=False, compute_gradient=False)
+        # print(iwe.shape)
+        # objval = -np.var(iwe-np.mean(iwe))
+        
+        losses.append((i, params[0], objval))
+        print(i, params[0], objval)
     
-    new_data = np.column_stack((x_raw, y_raw, time_raw))
-    print(new_data.shape)
-    return new_data
-
+    min_loss_i, rad, min_loss_value = min(losses, key=lambda x: x[2])
+    rpm = min_loss_i*1000/360*60
+    print('------------best------------')
+    print(min_loss_i, rad, min_loss_value, rpm)
+    
+    losses = np.array(losses)
+    plt.scatter(losses[:,0], losses[:,2], color='g', s=5)
+    plt.show()
+    
+    
 if __name__ == "__main__":
-    img_size = (720, 1280)
+    """
+    Quick demo of various objectives.
+    Args:
+        path Path to h5 file with event data
+        gt Ground truth optic flow for event slice
+        img_size The size of the event camera sensor
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--gt", nargs='+', type=float, default=(0, 0))
+    parser.add_argument("--img_size", nargs='+',
+                        type=float, default=(720, 1280))  # x,y
+    # parser.add_argument("--img_size", nargs='+', type=float, default=(-100,100))
+    args = parser.parse_args()
+
+    img_size = tuple(args.img_size)
 
     obj = sos_objective()
 
     '''calculate rpm for multiple blades'''
 
-    for keyname in range(1,2,1):        
+    # for keyname in range(1,6,1):
+    #     # basedir = f'H:\propeller_det_data\\testbed_exp\data\event\\processed\diff_illumination/{keyname}'
+    #     basedir = f'F:\propeller_det_data\\testbed_exp\data\event\\processed\diff_illumination/{keyname}'
+    #     # basedir = f'./'
+    #     # savedir = f'./results/ours/diff_illumination/{keyname}_filterd_{obj.name}_latency.csv'
+    #     savedir = f'./latency/{keyname}_filterd_{obj.name}_latency.csv'
+
+    for keyname in range(1000, 8001, 1000):
         # basedir = f'H:\propeller_det_data\\testbed_exp\data\event\\processed\diff_illumination/{keyname}'
-        basedir = f'./'
+        basedir = f'F:\propeller_det_data\\testbed_exp\data\event\\processed\\diff_rpm/{keyname}'
+        # basedir = f'./'
         # savedir = f'./results/ours/diff_illumination/{keyname}_filterd_{obj.name}_latency.csv'
-        savedir = f'test.csv'
+        savedir = f'./latency/diff_rpm/{keyname}_filterd_{obj.name}_latency.csv'
+
+        # savedir = f'test.csv'
         
         print(f'Processing {keyname}...')
 
+        
         # blur = 2.0 
         blur = 0.0 
         centers = [600,411]
         
         rpms_res = []
-        filepath = os.path.join(basedir, '1_sub.txt')
-        alldata = read_txt_xypt(filepath)
-        idx = 1
-        data = alldata[:10000]
-        begin = time.time()
-        rpm, rad_s = calculate_rpm(data, img_size, obj, blur, centers)
-        end = time.time()
-        
-        # print(idx/len(alldata)*100.0, rad_s)
-        print(f' {idx}/{len(alldata)}:  rpm = {abs(rpm)}')
+        filepath = os.path.join(basedir, f'cluster_1.npy')
+        alldata = np.load(filepath, allow_pickle=True)
+        for idx, data in enumerate(alldata):
+            data = data[:1000]
+            begin = time.perf_counter()
+            custom_optimize(data)
+            rpm, rad_s = calculate_rpm(data, img_size, obj, blur, centers)
+            end = time.perf_counter()
+            
+            # print(idx/len(alldata)*100.0, rad_s)
+            print(f' {idx}/{len(alldata)}:  rpm = {abs(rpm)}')
 
-        timestamp = idx * 50e3
-        delta_t = end - begin
-        print(f'Latency: {delta_t:.6f}s')
-        rpms_res.append([timestamp, abs(rpm), delta_t])
+            timestamp = idx * 50e3
+            delta_t = end - begin
+            print(f'Latency: {delta_t:.6f}s')
+            rpms_res.append([timestamp, abs(rpm), delta_t])
 
         
-        # df_rpms = pd.DataFrame(rpms_res, columns=['Time', 'RPM', 'DeltaT'])
-        # df_rpms.to_csv(savedir, index=False)
+        df_rpms = pd.DataFrame(rpms_res, columns=['Time', 'RPM', 'DeltaT'])
+        df_rpms.to_csv(savedir, index=False)
         
 
